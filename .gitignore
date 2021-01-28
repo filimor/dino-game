@@ -1,5 +1,6 @@
 # Astah
 
+*.asta
 *.asta.lock
 
 # compiled output
