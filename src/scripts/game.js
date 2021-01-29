@@ -1,7 +1,13 @@
 const FIELD_HEIGHT = 150;
 const FIELD_WIDTH = 600;
 const FPS = 1/60;
+//TODO: Put this property back inside the keyboard  class
+const KEYBINDS = {
+  32: 'jump',
+  40: 'crawl'
+};
 
+// TODO: Couldn't this be inside a class?
 function randomInt(max) {
   return Math.floor(Math.random() * Math.floor(max));
 }
@@ -28,23 +34,7 @@ class Entity {
   }
 }
 
-class Player extends Entity {
-  constructor(position, speed, direction) {
-    super(position, speed, direction);
-    this.width = 44;
-    this.height = 46;
-  }
-
-  update() {
-    super.update();
-
-    if (this.collisionRect().top() <= 0 ||
-      this.collisionRect().bottom() >= game.getFieldRect().bottom() ) {
-      this.direction.y *= -1;
-    }
-  }
-}
-
+// TODO: create subclasse of enemy with different sizes
 class Enemy extends Entity {
   update() {
     super.update();
@@ -57,7 +47,89 @@ class Enemy extends Entity {
   }
 }
 
-// TODO: create subclasse of enemy with different sizes
+class Player extends Entity {
+  constructor(position, direction) {
+    super(position, 0, direction);
+    this.width = 44;
+    this.height = 46;
+    this.jumping = false;
+    this.crawling = false;
+  }
+
+  jump(enable) {
+    this.jumping = enable;
+    console.log('Jump to be implemented');
+  }
+
+  crawl(enable) {
+    this.crawling = enable;
+    console.log('Crawl to be implemented');
+  }
+
+  update(fps) {
+    super.update(fps);
+  }
+}
+
+class PlayerActions {
+  constructor() {
+    this.ongoingActions = [];
+  }
+
+  startAction(id, playerAction) {
+    if (playerAction === undefined) {
+      return;
+    }
+
+    const actions = {
+      'jump': () => {
+        if (game.getPlayer()) {
+          game.player.jump(true);
+        }
+      },
+      'crawl': () => {
+        if (game.getPlayer()) {
+          game.player.crawl(true);
+        }
+      }
+    };
+
+    // TODO: WTF is that?
+    let f;
+    if (f = actions[playerAction]) {
+      f();
+    }
+
+    this.ongoingActions.push({identifier: id, playerAction: playerAction});
+  }
+
+  endAction(id) {
+    // TODO: remove duplicated code
+    const actions = {
+      'jump': () => {
+        if (game.getPlayer()) {
+          game.getPlayer.jump(true);
+        }
+      },
+      'crawl': () => {
+        if (game.getPlayer()) {
+          game.getPlayer.crawl(true);
+        }
+      }
+    };
+
+    let idx = this.ongoingActions.findIndex(x => x.identifier === id);
+
+    if (idx >= 0) {
+      // TODO: WTF again?
+      if (f = actions[this.ongoingActions[idx].playerAction]) {
+        f();
+      }
+
+      this.ongoingActions.splice(idx, 1);
+    }
+  }
+}
 
 class Renderer {
   constructor() {
@@ -183,6 +255,27 @@ class Rectangle {
   }
 }
 
+class Keyboard {
+  // TODO:Disattach keyboard from playerActions
+  keyDown(event) {
+    const key = event.keyCode;
+
+    if (KEYBINDS[key] !== undefined) {
+      event.preventDefault();
+      playerActions.startAction(key, KEYBINDS[key]);
+    }
+  }
+
+  keyUp(event) {
+    const key = event.key;
+
+    if (KEYBINDS[key] !== undefined) {
+      event.preventDefault();
+      playerActions.endAction(key);
+    }
+  }
+}
+
 class Game {
   constructor() {
     this.fieldRect = new Rectangle(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
@@ -193,7 +286,7 @@ class Game {
   }
 
   start() {
-    this.addEntity(new Player(new Vector2d(20, 20), 25, new Vector2d(0, -1)));
+    this.addEntity(new Player(new Vector2d(20, 20), new Vector2d(0, 0)));
     this.addEntity(new Enemy(new Vector2d(40,40), 20, new Vector2d(0, 1)));
 
     if (!this.started) {
@@ -246,7 +339,7 @@ class Game {
     return this.fieldRect;
   }
 
-  //TODO: I'ts really necessary?
+  //TODO: It's really necessary?
   getEnemies() {
     return this.enemies;
   }
@@ -258,5 +351,11 @@ class Game {
 
 const game = new Game();
 const renderer = new Renderer();
+const playerActions = new PlayerActions();
+const keyboard = new Keyboard();
+
 game.start();
 game.update();
+
+document.body.addEventListener('keydown', keyboard.keyDown);
+document.body.addEventListener('keyup', keyboard.keyUp);
