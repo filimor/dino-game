@@ -1,6 +1,6 @@
 const FIELD_HEIGHT = 150;
 const FIELD_WIDTH = 600;
-const FPS = 1/60;
+const MIN_FPS = 3/60;
 //TODO: Put this property back inside the keyboard  class
 const KEYBINDS = {
   32: 'jump',
@@ -36,8 +36,16 @@ class Entity {
 
 // TODO: create subclasse of enemy with different sizes
 class Enemy extends Entity {
-  update() {
-    super.update();
+  constructor(position, speed, direction) {
+    super(position, speed, direction);
+
+    // TODO: Implement different enemy sizes (sub-classing?)
+    this.width = 34;
+    this.height = 35;
+    this.timer = 0;
+  }
+  update(fps) {
+    super.update(fps);
 
     // TODO: destroy itself
     if (this.collisionRect().top() <= 0 ||
@@ -166,11 +174,32 @@ class Physics {
     this.update();
   }
 
-  static update(fps) {
+  update(fps) {
     for (const entity of game.getEntities()) {
       let velocity = Vector2d.vectorScalarMultiply(entity.direction, entity.speed);
       entity.position = Vector2d.vectorAdd(entity.position,
         Vector2d.vectorScalarMultiply(velocity, fps));
+    }
+    this.collisionCheck();
+  }
+
+  collisionCheck() {
+    let collisionPairs = [];
+
+    for (const enemy of game.getEnemies()) {
+      collisionPairs.push({enemy: enemy, player: game.getPlayer()});
+
+      if (!game.fieldRect.intersects(enemy.collisionRect())) {
+        // TODO: remove enemy;
+      }
+    }
+
+    for (let i = collisionPairs.length - 1; i >= 0; i--) {
+      const [enemy, player] = collisionPairs;
+
+      if (enemy && player && enemy.collisionRect().intersects(player.collisionRect())) {
+        game.setGameOver();
+      }
     }
   }
 }
@@ -235,7 +264,7 @@ class Rectangle {
   }
 
   //TODO: It's really necessary?f
-  static union(rectangle1, rectangle2) {
+  static rectUnion(rectangle1, rectangle2) {
     if (rectangle1 === undefined) {
       return rectangle2;
     }
@@ -256,7 +285,7 @@ class Rectangle {
 }
 
 class Keyboard {
-  // TODO:Disattach keyboard from playerActions
+  // TODO: Detach keyboard from playerActions
   keyDown(event) {
     const key = event.keyCode;
 
@@ -279,15 +308,31 @@ class Keyboard {
 class Game {
   constructor() {
     this.fieldRect = new Rectangle(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
+    this.enemySpeed = 10;
+    // TODO: Adapt to spawn enemies rate
+    this.enemyDropAmount = 1;
     this.entities = [];
     this.enemies = [];
     this.player = undefined;
     this.started = false;
+    this.gameOver = false;
+    this.lives = 1; // TODO: Remove?
+    this.score = 0;
+    this.lastFrameTime = 0;
+    // TODO: Move the high scores to another class
+    this.highScores = [];
+
+    if (typeof(Storage) !== undefined) {
+      try {
+        this.highScores = JSON.parse(localStorage.dinoScores);
+      } catch (e) {
+        this.highScores = [];
+      }
+    }
   }
 
   start() {
-    this.addEntity(new Player(new Vector2d(20, 20), new Vector2d(0, 0)));
-    this.addEntity(new Enemy(new Vector2d(40,40), 20, new Vector2d(0, 1)));
+    this.addEntity(new Player(new Vector2d(40, 40), new Vector2d(0, 0)));
 
     if (!this.started) {
       window.requestAnimationFrame(() => this.update());
@@ -318,16 +363,59 @@ class Game {
     }
   }
 
-  update() {
-    const fps = FPS;
-    Physics.update(fps);
+  update(time) {
+    const fps = Math.min((time - this.lastFrameTime) / 1000, MIN_FPS);
+    this.lastFrameTime = time;
+
+    if (this.gameOver) {
+      this.started = false;
+      return;
+    }
+
+    physics.update(fps);
 
     for (const entity of this.entities) {
       entity.update(fps);
     }
 
+
+
+    //TODO: Update to spawn enemies at random intervals?
+    if (this.enemies.length === 0) {
+
+    //   for (let i = 0; i < 10; i++) {
+    //     for (let j = 0; j < 5; j++) {
+    //       let dropTarget = 10 + j * 20;
+    //       let position = new Vector2d(50 + i * 20, dropTarget);
+    //       console.log(position);
+    //       let direction = new Vector2d(1, 0);
+    //       this.addEntity(new Enemy(position, this.enemySpeed, direction));
+    //     }
+    //   }
+
+      this.addEntity(
+        new Enemy(new Vector2d(60, 60), this.enemySpeed, new Vector2d(1, 0))
+      );
+    }
+
     renderer.render(fps);
     window.requestAnimationFrame(() => this.update());
+  }
+
+  addScore(score) {
+    this.highScores.push(score);
+    this.highScores.sort((a, b) => b - a);
+    this.highScores = this.highScores.slice(0, 10);
+
+    // TODO: Eliminate duplicated code
+    if (typeof(Storage) !== undefined) {
+      localStorage.dinoScores = JSON.stringify(this.highScores);
+    }
+  }
+
+  setGameOver() {
+    this.gameOver = true;
+    this.addScore(Math.round(this.score));
   }
 
   //TODO: Can I convert it to full properties?
@@ -352,8 +440,10 @@ class Game {
 const game = new Game();
 const renderer = new Renderer();
 const playerActions = new PlayerActions();
+const physics = new Physics();
 const keyboard = new Keyboard();
 
+// TODO: wait for the player press space bar
 game.start();
 game.update();
 
