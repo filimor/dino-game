@@ -1,6 +1,10 @@
 const FIELD_HEIGHT = 150;
 const FIELD_WIDTH = 600;
 const MIN_FPS = 3 / 60;
+const PLAYER_HEIGHT = 46;
+const PLAYER_WIDTH = 44;
+const PLAYER_START_X = 22;
+const PLAYER_START_Y = 127;
 //TODO: Put this property back inside the keyboard  class
 const KEYBINDS = {
   ' ': 'jump',
@@ -59,26 +63,42 @@ class Enemy extends Entity {
 class Player extends Entity {
   constructor(position) {
     super(position, 0, new Vector2d(0, 0));
-    this.width = 44;
-    this.height = 46;
+    this.width = PLAYER_WIDTH;
+    this.height = PLAYER_HEIGHT;
+    this.gravity = 9.8 * 6;
+    this.impulse = 50;
     this.ducking = false;
+    this.jumping = false;
+    this.speed = 100;
   }
 
   jump() {
-    console.log('Jump to be implemented');
+    if (this.jumping) {
+      return;
+    }
 
-    // TODO: This code could help
-    // Player.prototype.updateDirection = function () {
-    //   var direction = new Vector2d(0, 0);
-    //   if( this.movingLeft ) {
-    //       direction = vectorAdd( direction, new Vector2d(-1, 0) );
-    //   }
-    //   if( this.movingRight ) {
-    //       direction = vectorAdd( direction, new Vector2d(1, 0) );
-    //   }
+    this.jumping = true;
 
-    //   this.direction = direction;
-    // };
+    // TODO: Fix the FPS used
+    let maxJump = PLAYER_HEIGHT / 2;
+    let upInterval = setInterval(() => {
+      if (this.position.y <= maxJump) {
+        this.position.y = maxJump;
+        clearInterval(upInterval);
+
+        let downInterval = setInterval(() => {
+          this.direction = new Vector2d(0, 1);
+          if (this.position.y >= PLAYER_START_Y) {
+            this.position.y = PLAYER_START_Y;
+            this.direction = new Vector2d(0, 0);
+            clearInterval(downInterval);
+            this.jumping = false;
+          }
+        }, MIN_FPS);
+      } else {
+        this.direction = new Vector2d(0, -1);
+      }
+    }, MIN_FPS);
   }
 
   duck(enable) {
@@ -192,6 +212,10 @@ class Physics {
         }
       }
     //}
+
+    if (game.getPlayer() && game.getPlayer().jumping) {
+
+    }
   }
 }
 
@@ -299,8 +323,8 @@ class Keyboard {
 class Game {
   constructor() {
     this.fieldRect = new Rectangle(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-    this.enemySpeed = 80;
-    this.spawnRate = 10;
+    this.enemySpeed = 100;
+    this.spawnInterval = 10;
     this.entities = [];
     this.enemies = [];
     this.player = undefined;
@@ -321,7 +345,7 @@ class Game {
   }
 
   start() {
-    this.addEntity(new Player(new Vector2d(22, 127)));
+    this.addEntity(new Player(new Vector2d(PLAYER_START_X, PLAYER_START_Y)));
 
     if (!this.started) {
       window.requestAnimationFrame(() => this.update());
@@ -347,7 +371,7 @@ class Game {
     this.entities = this.entities.filter(x => !entities.includes(x));
     this.enemies = this.enemies.filter(x => !entities.includes(x));
 
-    if (this.entities.includes(this.player)) {
+    if (entities.includes(this.player)) {
       this.player = undefined;
     }
   }
@@ -378,7 +402,7 @@ class Game {
     }
 
     // TODO: Fix the crazy spawn rate
-    if(randomInt(2000) < this.spawnRate) {
+    if(randomInt(2000) < this.spawnInterval) {
       this.addEntity(new Enemy(new Vector2d(617, 133), this.enemySpeed));
     }
 
