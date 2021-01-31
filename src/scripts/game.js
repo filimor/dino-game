@@ -187,7 +187,6 @@ class Physics {
     // TODO: extract method?
     //if (player) {
       for (const enemy of game.getEnemies()) {
-        // TODO: collision is not working
         if (enemy.collisionRect().intersects(game.getPlayer().collisionRect())) {
           game.setGameOver();
         }
@@ -249,10 +248,10 @@ class Rectangle {
   }
 
   intersects(rectangle2) {
-    return this.right() >= rectangle2.left &&
-      this.left() <= rectangle2.right &&
-      this.top() <= rectangle2.bottom &&
-      this.bottom() >= rectangle2.top;
+    return this.right() >= rectangle2.left() &&
+      this.left() <= rectangle2.right() &&
+      this.top() <= rectangle2.bottom() &&
+      this.bottom() >= rectangle2.top();
   }
 
   //TODO: It's really necessary?f
@@ -358,7 +357,7 @@ class Game {
     const fps = 1/60;
 
     // TODO: update the score here?
-    score++;
+    //score++;
 
     //const fps = Math.min((newFps - this.lastFps) / 1000, MIN_FPS);
     //this.lastFps = time;
