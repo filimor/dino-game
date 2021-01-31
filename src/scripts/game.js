@@ -1,10 +1,10 @@
 const FIELD_HEIGHT = 150;
 const FIELD_WIDTH = 600;
-const MIN_FPS = 3/60;
+const MIN_FPS = 3 / 60;
 //TODO: Put this property back inside the keyboard  class
 const KEYBINDS = {
-  32: 'jump',
-  40: 'crawl'
+  ' ': 'jump',
+  'ArrowDown': 'duck'
 };
 
 // TODO: Couldn't this be inside a class?
@@ -20,6 +20,7 @@ class Entity {
     this.time = 0;
     this.width = 5;
     this.height = 5;
+    this.hp = 1;
   }
 
   update(fps) {
@@ -36,42 +37,53 @@ class Entity {
 
 // TODO: create subclasse of enemy with different sizes
 class Enemy extends Entity {
-  constructor(position, speed, direction) {
-    super(position, speed, direction);
+  constructor(position, speed) {
+    super(position, speed, new Vector2d(-1, 0));
 
     // TODO: Implement different enemy sizes (sub-classing?)
     this.width = 34;
     this.height = 35;
-    this.timer = 0;
+    // TODO: Do I need this field?
+    this.time = 0;
   }
+
   update(fps) {
     super.update(fps);
 
-    // TODO: destroy itself
-    if (this.collisionRect().top() <= 0 ||
-      this.collisionRect().bottom() >= game.getFieldRect().bottom() ) {
-      this.direction.y *= -1;
+    if (this.collisionRect().right() <= 0 ) {
+      this.hp--;
     }
   }
 }
 
 class Player extends Entity {
-  constructor(position, direction) {
-    super(position, 0, direction);
+  constructor(position) {
+    super(position, 0, new Vector2d(0, 0));
     this.width = 44;
     this.height = 46;
-    this.jumping = false;
-    this.crawling = false;
+    this.ducking = false;
   }
 
-  jump(enable) {
-    this.jumping = enable;
+  jump() {
     console.log('Jump to be implemented');
+
+    // TODO: This code could help
+    // Player.prototype.updateDirection = function () {
+    //   var direction = new Vector2d(0, 0);
+    //   if( this.movingLeft ) {
+    //       direction = vectorAdd( direction, new Vector2d(-1, 0) );
+    //   }
+    //   if( this.movingRight ) {
+    //       direction = vectorAdd( direction, new Vector2d(1, 0) );
+    //   }
+
+    //   this.direction = direction;
+    // };
   }
 
-  crawl(enable) {
-    this.crawling = enable;
-    console.log('Crawl to be implemented');
+  duck(enable) {
+    this.ducking = enable;
+    console.log('duck to be implemented');
   }
 
   update(fps) {
@@ -92,12 +104,12 @@ class PlayerActions {
     const actions = {
       'jump': () => {
         if (game.getPlayer()) {
-          game.player.jump(true);
+          game.player.jump();
         }
       },
-      'crawl': () => {
+      'duck': () => {
         if (game.getPlayer()) {
-          game.player.crawl(true);
+          game.player.duck(true);
         }
       }
     };
@@ -114,27 +126,23 @@ class PlayerActions {
   endAction(id) {
     // TODO: remove duplicated code
     const actions = {
-      'jump': () => {
+      'duck': () => {
         if (game.getPlayer()) {
-          game.getPlayer.jump(true);
-        }
-      },
-      'crawl': () => {
-        if (game.getPlayer()) {
-          game.getPlayer.crawl(true);
+          game.getPlayer.duck(false);
         }
       }
     };
 
-    let idx = this.ongoingActions.findIndex(x => x.identifier === id);
+    let index = this.ongoingActions.findIndex(x => x.identifier === id);
 
-    if (idx >= 0) {
+    let f;
+    if (index >= 0) {
       // TODO: WTF again?
-      if (f = actions[this.ongoingActions[idx].playerAction]) {
+      if (f = actions[this.ongoingActions[index].playerAction]) {
         f();
       }
 
-      this.ongoingActions.splice(idx, 1);
+      this.ongoingActions.splice(index, 1);
     }
   }
 }
@@ -143,10 +151,9 @@ class Renderer {
   constructor() {
     this.canvas = document.querySelector('#game-layer');
     this.context = this.canvas.getContext('2d');
-    this.render();
   }
 
-  // TODO: replace color with image
+  // TODO: remove the foreground color
   drawRectangle(color, entity) {
     this.context.fillStyle = color;
     this.context.fillRect(entity.position.x - entity.width / 2,
@@ -170,37 +177,22 @@ class Renderer {
 }
 
 class Physics {
-  constructor() {
-    this.update();
-  }
-
   update(fps) {
     for (const entity of game.getEntities()) {
       let velocity = Vector2d.vectorScalarMultiply(entity.direction, entity.speed);
       entity.position = Vector2d.vectorAdd(entity.position,
         Vector2d.vectorScalarMultiply(velocity, fps));
     }
-    this.collisionCheck();
-  }
 
-  collisionCheck() {
-    let collisionPairs = [];
-
-    for (const enemy of game.getEnemies()) {
-      collisionPairs.push({enemy: enemy, player: game.getPlayer()});
-
-      if (!game.fieldRect.intersects(enemy.collisionRect())) {
-        // TODO: remove enemy;
+    // TODO: extract method?
+    //if (player) {
+      for (const enemy of game.getEnemies()) {
+        // TODO: collision is not working
+        if (enemy.collisionRect().intersects(game.getPlayer().collisionRect())) {
+          game.setGameOver();
+        }
       }
-    }
-
-    for (let i = collisionPairs.length - 1; i >= 0; i--) {
-      const [enemy, player] = collisionPairs;
-
-      if (enemy && player && enemy.collisionRect().intersects(player.collisionRect())) {
-        game.setGameOver();
-      }
-    }
+    //}
   }
 }
 
@@ -257,10 +249,10 @@ class Rectangle {
   }
 
   intersects(rectangle2) {
-    return this.right() >= rectangle2.left() &&
-      this.left() <= rectangle2.right() &&
-      this.top() <= rectangle2.bottom() &&
-      this.bottom() >= rectangle2.top();
+    return this.right() >= rectangle2.left &&
+      this.left() <= rectangle2.right &&
+      this.top() <= rectangle2.bottom &&
+      this.bottom() >= rectangle2.top;
   }
 
   //TODO: It's really necessary?f
@@ -287,7 +279,7 @@ class Rectangle {
 class Keyboard {
   // TODO: Detach keyboard from playerActions
   keyDown(event) {
-    const key = event.keyCode;
+    const key = event.key;
 
     if (KEYBINDS[key] !== undefined) {
       event.preventDefault();
@@ -308,17 +300,15 @@ class Keyboard {
 class Game {
   constructor() {
     this.fieldRect = new Rectangle(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-    this.enemySpeed = 10;
-    // TODO: Adapt to spawn enemies rate
-    this.enemyDropAmount = 1;
+    this.enemySpeed = 80;
+    this.spawnRate = 10;
     this.entities = [];
     this.enemies = [];
     this.player = undefined;
     this.started = false;
     this.gameOver = false;
-    this.lives = 1; // TODO: Remove?
     this.score = 0;
-    this.lastFrameTime = 0;
+    this.lastFps = 0;
     // TODO: Move the high scores to another class
     this.highScores = [];
 
@@ -332,7 +322,7 @@ class Game {
   }
 
   start() {
-    this.addEntity(new Player(new Vector2d(40, 40), new Vector2d(0, 0)));
+    this.addEntity(new Player(new Vector2d(22, 127)));
 
     if (!this.started) {
       window.requestAnimationFrame(() => this.update());
@@ -350,22 +340,28 @@ class Game {
     }
   }
 
-  removeEntity(entity) {
+  removeEntities(entities) {
     if (!entities) {
       return;
     }
 
-    this.entities = this.entities.filter(x => !this.entities.includes(x));
-    this.enemies = this.enemies.filter(x => !this.entities.includes(x));
+    this.entities = this.entities.filter(x => !entities.includes(x));
+    this.enemies = this.enemies.filter(x => !entities.includes(x));
 
     if (this.entities.includes(this.player)) {
       this.player = undefined;
     }
   }
 
-  update(time) {
-    const fps = Math.min((time - this.lastFrameTime) / 1000, MIN_FPS);
-    this.lastFrameTime = time;
+  update(newFps) {
+    // TODO: remove this and fix FPS calculation
+    const fps = 1/60;
+
+    // TODO: update the score here?
+    score++;
+
+    //const fps = Math.min((newFps - this.lastFps) / 1000, MIN_FPS);
+    //this.lastFps = time;
 
     if (this.gameOver) {
       this.started = false;
@@ -376,28 +372,18 @@ class Game {
 
     for (const entity of this.entities) {
       entity.update(fps);
+
+      if (entity.hp <= 0) {
+        this.removeEntities([entity]);
+      }
     }
 
-
-
-    //TODO: Update to spawn enemies at random intervals?
-    if (this.enemies.length === 0) {
-
-    //   for (let i = 0; i < 10; i++) {
-    //     for (let j = 0; j < 5; j++) {
-    //       let dropTarget = 10 + j * 20;
-    //       let position = new Vector2d(50 + i * 20, dropTarget);
-    //       console.log(position);
-    //       let direction = new Vector2d(1, 0);
-    //       this.addEntity(new Enemy(position, this.enemySpeed, direction));
-    //     }
-    //   }
-
-      this.addEntity(
-        new Enemy(new Vector2d(60, 60), this.enemySpeed, new Vector2d(1, 0))
-      );
+    // TODO: Fix the crazy spawn rate
+    if(randomInt(2000) < this.spawnRate) {
+      this.addEntity(new Enemy(new Vector2d(617, 133), this.enemySpeed));
     }
 
+    //TODO: remove coupling (dependency injection?)
     renderer.render(fps);
     window.requestAnimationFrame(() => this.update());
   }
@@ -427,7 +413,6 @@ class Game {
     return this.fieldRect;
   }
 
-  //TODO: It's really necessary?
   getEnemies() {
     return this.enemies;
   }
