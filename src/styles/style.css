@@ -1,0 +1,90 @@
+@font-face {
+  font-family: arcade;
+  src: url(../fonts/PressStart2P.ttf);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-size: 100%;
+}
+
+.wrapper {
+  display: table;
+  width: 600px;
+  position: relative;
+  margin-left: auto;
+  margin-right: auto;
+
+  font-family: 'arcade', monospace;
+  /* background-color: #fafafa; */
+  color: black;
+}
+
+.container {
+  display: table-cell;
+  vertical-align: top;
+}
+
+.canvas-container {
+  width: 100%;
+  min-width: 320px;
+}
+
+.hud {
+  width: 100%;
+  font-size: 14px;
+  line-height: 1em;
+  text-align: right;
+  padding-right: 10px;
+  padding-top: 10px;
+}
+
+#game-layer {
+  width: 100%;
+  vertical-align: top;
+  z-index: 0;
+}
+
+#title {
+  width: 100%;
+  font-size: 18px;
+  text-align: center;
+  line-height: 2em;
+  position: absolute;
+  z-index: 1;
+}
+
+#high-scores {
+  font-size: 12px;
+  line-height: 0.8em;
+  width: 100%;
+  position: absolute;
+  z-index: 2;
+  display: none;
+}
+
+#scores-table {
+  margin-left: auto;
+  margin-right: auto;
+  width: 30%;
+  /* border: 0px solid black;
+  border-collapse: collapse;
+  background-color: #fafafa; */
+}
+
+#scores-table .scores-header {
+  text-align: center;
+}
+
+#scores-table .scores-position {
+  text-align: right;
+  width: 1%;
+}
+
+#scores-table .scores-value {
+  text-align: right;
+  width: 99%;
+}

@@ -9,6 +9,34 @@
     <script src="scripts/game.js" charset="utf-8" defer></script>
   </head>
   <body>
-    <canvas id="game-layer" width="600" height="150"></canvas>
+    <div class ="wrapper"><!-- TODO: it's necessary? -->
+      <div class="container">
+        <div class="hud" id="score">Score</div>
+        <div class="canvas-container">
+          <div id=title>
+            Dino Game<br/>
+            How To Play<br/>
+            Jump: Space - Duck: Arrow Down<br/>
+            Press Space to Start
+          </div>
+          <div id="high-scores">
+            <table id="scores-table">
+              <tr><th class="scores-header" colspan="2">High Scores</th></tr>
+              <tr><td class="scores-position"> 1.</td> <td class="scores-value" id="score0">0</td></tr>
+              <tr><td class="scores-position"> 1.</td> <td class="scores-value" id="score1">1</td></tr>
+              <tr><td class="scores-position"> 1.</td> <td class="scores-value" id="score2">2</td></tr>
+              <tr><td class="scores-position"> 1.</td> <td class="scores-value" id="score3">3</td></tr>
+              <tr><td class="scores-position"> 1.</td> <td class="scores-value" id="score4">4</td></tr>
+              <tr><td class="scores-position"> 1.</td> <td class="scores-value" id="score5">5</td></tr>
+              <tr><td class="scores-position"> 1.</td> <td class="scores-value" id="score6">6</td></tr>
+              <tr><td class="scores-position"> 1.</td> <td class="scores-value" id="score7">7</td></tr>
+              <tr><td class="scores-position"> 1.</td> <td class="scores-value" id="score8">8</td></tr>
+              <tr><td class="scores-position"> 1.</td> <td class="scores-value" id="score9">9</td></tr>
+            </table>
+          </div>
+          <canvas id="game-layer" width="600" height="150"></canvas>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
