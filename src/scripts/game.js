@@ -1,11 +1,10 @@
 const FIELD_HEIGHT = 150;
 const FIELD_WIDTH = 600;
-const MIN_FPS = 3 / 60;
 const PLAYER_HEIGHT = 46;
 const PLAYER_WIDTH = 44;
 const PLAYER_START_X = 22;
 const PLAYER_START_Y = 127;
-//TODO: Put this property back inside the keyboard  class
+const FPS = 1 / 20;
 const KEYBINDS = {
   ' ': 'jump',
   'ArrowDown': 'duck'
@@ -21,16 +20,17 @@ class Entity {
     this.position = position;
     this.speed = speed;
     this.direction = direction;
-    this.time = 0;
+    this.timer = 0;
     this.width = 5;
     this.height = 5;
     this.hp = 1;
   }
 
   update(fps) {
-    this.time += fps;
+    this.timer += fps;
   }
 
+  // TODO: reduce collision rect size
   collisionRect() {
     return new Rectangle(this.position.x - this.width / 2,
       this.position.y - this.height / 2,
@@ -48,7 +48,7 @@ class Enemy extends Entity {
     this.width = 34;
     this.height = 35;
     // TODO: Do I need this field?
-    this.time = 0;
+    this.timer = 0;
   }
 
   update(fps) {
@@ -94,11 +94,11 @@ class Player extends Entity {
             clearInterval(downInterval);
             this.jumping = false;
           }
-        }, MIN_FPS);
+        }, FPS);
       } else {
         this.direction = new Vector2d(0, -1);
       }
-    }, MIN_FPS);
+    }, FPS);
   }
 
   duck(enable) {
@@ -123,8 +123,12 @@ class PlayerActions {
 
     const actions = {
       'jump': () => {
-        if (game.getPlayer()) {
-          game.player.jump();
+        if (!game.started || game.gameOver) {
+          game.start();
+        } else {
+          if (game.getPlayer()) {
+            game.player.jump();
+          }
         }
       },
       'duck': () => {
@@ -167,31 +171,132 @@ class PlayerActions {
   }
 }
 
+class Sprite {
+  constructor(path, frames, fps, red, green, blue) {
+    this.frames = frames;
+    this.fps = fps;
+    this.timer = 0;
+    this.currentFrame = 0;
+    this.image = new Image();
+    this.spriteImage = new Image();
+    this.spriteImage.src = path;
+
+    this.spriteImage.onload = () => {
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+
+      canvas.width = this.spriteImage.width;
+      canvas.height = this.spriteImage.height;
+
+      context.drawImage(
+        this.spriteImage, 0, 0, this.spriteImage.width, this.spriteImage.height,
+        0, 0, canvas.width, canvas.height
+      );
+
+      const sourceData = context.getImageData(
+        0, 0, this.spriteImage.width, this.spriteImage.height
+      );
+
+      // TODO: It's really necessary?
+      const data = sourceData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = red;
+        data[i + 1] = green;
+        data[i + 2] = blue;
+      }
+
+      context.putImageData(sourceData, 0, 0);
+      this.image.src = canvas.toDataURL('image/png');
+    };
+  }
+
+  update(fps) {
+    this.timer += fps;
+
+    if (this.timer > 1/ this.fps) {
+      this.timer = 0;
+    }
+
+    this.currentFrame = (this.currentFrame + 1) % this.frames;
+  }
+}
+
 class Renderer {
   constructor() {
     this.canvas = document.querySelector('#game-layer');
     this.context = this.canvas.getContext('2d');
+
+    this.playerSprite = new Sprite('/src/images/dino.png', 4, 8, 0, 0, 0);
+    this.enemySprites = [
+      new Sprite('/src/images/small_cactus1.png', 1, 2, 0, 0, 0),
+      new Sprite('/src/images/small_cactus2.png', 1, 1, 0, 0, 0)
+    ];
+
+    this.sprites = [].concat(this.playerSprite, this.enemySprites);
   }
 
-  // TODO: remove the foreground color
-  drawRectangle(color, entity) {
-    this.context.fillStyle = color;
-    this.context.fillRect(entity.position.x - entity.width / 2,
+  // TODO: convert entity.position.x = entity.width / 2 to a prop?
+  drawSprite(sprite, entity) {
+    const frame = sprite.image.width / sprite.frames;
+    this.context.drawImage(
+      sprite.image,
+      frame * sprite.currentFrame,
+      0,
+      frame,
+      sprite.image.height,
+      entity.position.x - entity.width / 2,
       entity.position.y - entity.height / 2,
       entity.width,
-      entity.height);
+      entity.height
+    );
   }
 
   render(fps) {
+    for (const sprite of this.sprites) {
+      sprite.update(fps);
+    }
+
     this.context.fillStyle = '#fafafa';
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     for (const entity of game.getEntities()) {
       if (entity instanceof Enemy) {
-        this.drawRectangle('red', entity);
+        this.drawSprite(this.enemySprites[0], entity);
       } else if (entity instanceof Player) {
-        this.drawRectangle('blue', entity);
+        this.drawSprite(this.playerSprite, entity);
       }
+    }
+
+    this.updateUI();
+  }
+
+  updateUI() {
+    const scoreElement = document.querySelector('#score');
+    const highScoresElement = document.querySelector('#high-scores');
+    const titleElement = document.querySelector('#title');
+
+    const scoreText = 'Score' + Math.round(game.score);
+    if (scoreElement.innerHTML != scoreText) {
+      scoreElement.innerHTML = scoreText;
+    }
+
+    if (game.gameOver) {
+      const scores = game.highScores;
+
+      for (let i = 0; i < scores.length; i++) {
+        document.querySelector('#score' + i).innerHTML = scores[i];
+      }
+      highScoresElement.style.display = 'block';
+      titleElement.style.display = 'none';
+      console.log(highScoresElement);
+    } else {
+      highScoresElement.style.display = 'none';
+      titleElement.style.display = 'none';
+    }
+
+    if (game.started) {
+      highScoresElement.style.display = 'none';
+      titleElement.style.display = 'none';
     }
   }
 }
@@ -323,7 +428,7 @@ class Keyboard {
 class Game {
   constructor() {
     this.fieldRect = new Rectangle(0, 0, FIELD_WIDTH, FIELD_HEIGHT);
-    this.enemySpeed = 100;
+    this.enemySpeed = 150;
     this.spawnInterval = 10;
     this.entities = [];
     this.enemies = [];
@@ -378,13 +483,13 @@ class Game {
 
   update(newFps) {
     // TODO: remove this and fix FPS calculation
-    const fps = 1/60;
+    const fps = FPS;
 
     // TODO: update the score here?
     //score++;
 
-    //const fps = Math.min((newFps - this.lastFps) / 1000, MIN_FPS);
-    //this.lastFps = time;
+    //const fps = Math.min((newFps - this.lastFps) / 1000, FPS);
+    //this.lastFps = timer;
 
     if (this.gameOver) {
       this.started = false;
@@ -450,10 +555,6 @@ const renderer = new Renderer();
 const playerActions = new PlayerActions();
 const physics = new Physics();
 const keyboard = new Keyboard();
-
-// TODO: wait for the player press space bar
-game.start();
-game.update();
 
 document.body.addEventListener('keydown', keyboard.keyDown);
 document.body.addEventListener('keyup', keyboard.keyUp);
