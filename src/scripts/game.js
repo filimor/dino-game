@@ -15,27 +15,44 @@ function randomInt(max) {
   return Math.floor(Math.random() * Math.floor(max));
 }
 
+// TODO: use ES6 prop names
 class Entity {
   constructor(position, speed, direction) {
     this.position = position;
     this.speed = speed;
-    this.direction = direction;
+    this._direction = direction;
     this.timer = 0;
     this.width = 5;
     this.height = 5;
     this.hp = 1;
+    // TODO: reduce collision rect size
+    this.collisionRect = new Rectangle(
+      this.position.x - this.width / 2,
+      this.position.y - this.height / 2,
+      this.width,
+      this.height
+    );
+  }
+
+  get direction() {
+    return this._direction;
+  }
+
+  set direction(value) {
+    this._direction = value;
+  }
+
+  getCollisionRect() {
+    this.collisionRect.x = this.position.x - this.width / 2;
+    this.collisionRect.y = this.position.y - this.height / 2;
+    this.collisionRect.width = this.width;
+    this.collisionRect.height = this.height;
+
+    return this.collisionRect;
   }
 
   update(fps) {
     this.timer += fps;
-  }
-
-  // TODO: reduce collision rect size
-  collisionRect() {
-    return new Rectangle(this.position.x - this.width / 2,
-      this.position.y - this.height / 2,
-      this.width,
-      this.height);
   }
 }
 
@@ -54,7 +71,7 @@ class Enemy extends Entity {
   update(fps) {
     super.update(fps);
 
-    if (this.collisionRect().right() <= 0 ) {
+    if (this.getCollisionRect().right() <= 0 ) {
       this.hp--;
     }
   }
@@ -87,16 +104,16 @@ class Player extends Entity {
         clearInterval(upInterval);
 
         let downInterval = setInterval(() => {
-          this.direction = new Vector2d(0, 1);
+          this.direction.set(0, 1);
           if (this.position.y >= PLAYER_START_Y) {
             this.position.y = PLAYER_START_Y;
-            this.direction = new Vector2d(0, 0);
+            this.direction.set(0, 0);
             clearInterval(downInterval);
             this.jumping = false;
           }
         }, FPS);
       } else {
-        this.direction = new Vector2d(0, -1);
+        this.direction.set(0, -1);
       }
     }, FPS);
   }
@@ -114,14 +131,8 @@ class Player extends Entity {
 class PlayerActions {
   constructor() {
     this.ongoingActions = [];
-  }
 
-  startAction(id, playerAction) {
-    if (playerAction === undefined) {
-      return;
-    }
-
-    const actions = {
+    this.startActions = {
       'jump': () => {
         if (!game.started || game.gameOver) {
           game.start();
@@ -138,9 +149,23 @@ class PlayerActions {
       }
     };
 
+    this.endActions = {
+      'duck': () => {
+        if (game.getPlayer()) {
+          game.getPlayer.duck(false);
+        }
+      }
+    };
+  }
+
+  startAction(id, playerAction) {
+    if (playerAction === undefined) {
+      return;
+    }
+
     // TODO: WTF is that?
     let f;
-    if (f = actions[playerAction]) {
+    if (f = this.startActions[playerAction]) {
       f();
     }
 
@@ -149,20 +174,13 @@ class PlayerActions {
 
   endAction(id) {
     // TODO: remove duplicated code
-    const actions = {
-      'duck': () => {
-        if (game.getPlayer()) {
-          game.getPlayer.duck(false);
-        }
-      }
-    };
 
     let index = this.ongoingActions.findIndex(x => x.identifier === id);
 
     let f;
     if (index >= 0) {
       // TODO: WTF again?
-      if (f = actions[this.ongoingActions[index].playerAction]) {
+      if (f = this.endActions[this.ongoingActions[index].playerAction]) {
         f();
       }
 
@@ -302,21 +320,26 @@ class Renderer {
 }
 
 class Physics {
+  constructor() {
+    this.velocityStep = new Vector2d(0, 0);
+  }
+
+  collide(entity1, entity2) {
+    if (entity1.getCollisionRect().intersects(entity2.getCollisionRect())) {
+      game.setGameOver();
+    }
+  }
+
   update(fps) {
     for (const entity of game.getEntities()) {
-      let velocity = Vector2d.vectorScalarMultiply(entity.direction, entity.speed);
-      entity.position = Vector2d.vectorAdd(entity.position,
-        Vector2d.vectorScalarMultiply(velocity, fps));
+      this.velocityStep.set(entity.direction.x, entity.direction.y);
+      this.velocityStep.scalarMultiply(entity.speed * fps);
+      entity.position.add(this.velocityStep);
     }
 
-    // TODO: extract method?
-    //if (player) {
-      for (const enemy of game.getEnemies()) {
-        if (enemy.collisionRect().intersects(game.getPlayer().collisionRect())) {
-          game.setGameOver();
-        }
-      }
-    //}
+    for (const enemy of game.getEnemies()) {
+      this.collide(game.getPlayer(), enemy);
+    }
 
     if (game.getPlayer() && game.getPlayer().jumping) {
 
@@ -324,31 +347,44 @@ class Physics {
   }
 }
 
+// TODO: remove unused methods
 class Vector2d {
   constructor(x, y) {
     this.x = x;
     this.y = y;
   }
 
-  static vectorAdd(vector1, vector2) {
-    return new Vector2d(vector1.x + vector2.x, vector1.y + vector2.y);
+  set(x, y) {
+    this.x = x;
+    this.y = y;
   }
 
-  static vectorSubtract(vector1, vector2) {
-    return new Vector2d(vector1.x - vector1.x, vector2.y - vector2.y);
+  clone() {
+    return new Vector2d(this.x, this.y);
   }
 
-  static vectorScalarMultiply(vector, scalarValue) {
-    return new Vector2d(vector.x * scalarValue, vector.y * scalarValue);
+  add(vector2) {
+    this.x += vector2.x;
+    this.y += vector2.y;
+  }
+
+  subtract(vector2) {
+    this.x -= vector2.x;
+    this.y -= vector2.y;
   }
 
   static vectorLength(vector) {
     return Math.sqrt(Math.pow(vector.x, 2) + Math.pow(vector.y, 2));
   }
 
+  scalarMultiply(scalarValue) {
+    this.x *= scalarValue;
+    this.y *= scalarValue;
+  }
+
   static vectorNormalize(vector) {
     const reciprocal = 1.0 / (this.vectorLength(vector) + Number.EPSILON);
-    return this.vectorScalarMultiply(reciprocal);
+    return this.scalarMultiply(reciprocal);
   }
 }
 
@@ -358,6 +394,17 @@ class Rectangle {
     this.y = y;
     this.width = width;
     this.height = height;
+  }
+
+  set(x, y, width, height) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+  }
+
+  static clone() {
+    return new Rectangle(this.x, this.y, this.width, this.height);
   }
 
   left() {
@@ -383,24 +430,30 @@ class Rectangle {
       this.bottom() >= rectangle2.top();
   }
 
+  containsPoint(x, y) {
+    return this.left() <= x &&
+      x <= this.right() &&
+      this.top() <= y &&
+      y <= this.bottom();
+  }
+
   //TODO: It's really necessary?f
-  static rectUnion(rectangle1, rectangle2) {
-    if (rectangle1 === undefined) {
-      return rectangle2;
-    }
-
+  static union(rectangle2) {
     if (rectangle2 === undefined) {
-      return rectangle1;
+      return;
     }
 
-    const x = Math.min(rectangle1.x, rectangle2.x);
-    const y = Math.min(rectangle1.y, rectangle2.y);
-    const width = Math.max(rectangle1.right(), rectangle2.right() -
-      Math.min(rectangle1.left(), rectangle2.left()));
-    const height = Math.max(rectangle1.bottom, rectangle2.bottom() -
-      Math.min(rectangle1.top(), rectangle2.top()));
+    const x = Math.min(this.x, rectangle2.x);
+    const y = Math.min(this.y, rectangle2.y);
+    const width = Math.max(this.right(), rectangle2.right() -
+      Math.min(this.left(), rectangle2.left()));
+    const height = Math.max(this.bottom, rectangle2.bottom() -
+      Math.min(this.top(), rectangle2.top()));
 
-    return new Rectangle(x, y, width, height);
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
   }
 }
 
@@ -439,6 +492,7 @@ class Game {
     this.lastFps = 0;
     // TODO: Move the high scores to another class
     this.highScores = [];
+    this.updateFunc = () => this.update();
 
     if (typeof(Storage) !== undefined) {
       try {
@@ -513,7 +567,7 @@ class Game {
 
     //TODO: remove coupling (dependency injection?)
     renderer.render(fps);
-    window.requestAnimationFrame(() => this.update());
+    window.requestAnimationFrame(this.updateFunc);
   }
 
   addScore(score) {
