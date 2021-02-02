@@ -1,7 +1,7 @@
 const FIELD_BACKGROUND = '#fafafa';
 const FIELD_HEIGHT = 150;
 const FIELD_WIDTH = 600;
-const FPS = 1/60;
+const FPS = 1/50;
 
 const PLAYER_POS = {
   'NORMAL_WIDTH': 44,
@@ -22,7 +22,7 @@ const ENEMY_POS = {
   'CACTUS2_START_Y': 133,
   'CACTUS2_WIDTH': 25,
   'CACTUS2_HEIGHT': 49,
-  'BIRD_START_Y': 100,
+  'BIRD_START_Y': 102,
   'BIRD_WIDTH': 46,
   'BIRD_HEIGHT': 39,
 };
@@ -73,10 +73,26 @@ class Enemy extends Entity {
   constructor(position, speed, rank) {
     super(position, speed, new Vector2d(-1, 0));
 
-    // TODO: Implement different enemy sizes
-    this.width = 34;
-    this.height = 35;
+
     this.rank = rank;
+
+    switch (rank) {
+      case 0:
+        this.width = 34;
+        this.height = 35;
+        break;
+      case 3:
+        this.width = 25;
+        this.height = 49;
+        break;
+      case 7:
+        console.log('test');
+        this.width = 46;
+        this.height = 39;
+        break;
+      default:
+        break;
+    }
   }
 
   update(fps) {
@@ -95,7 +111,7 @@ class Player extends Entity {
     this.height = PLAYER_POS.NORMAL_HEIGHT;
     this.ducking = false;
     this.jumping = false;
-    this.speed = 160;
+    this.speed = 250;
     this.status = 0;
   }
 
@@ -553,7 +569,7 @@ class Game {
     }
 
     if(Math.floor(Math.random() * 1000) < this.SpawnRate) {
-      switch (Math.floor(Math.random() * 3)) {
+      switch (Math.floor(Math.random() * 4)) {
         case 1:
           this.addEntity(new Enemy(
             new Vector2d(ENEMY_POS.START_X, ENEMY_POS.CACTUS1_START_Y),
@@ -575,7 +591,6 @@ class Game {
         default:
           break;
       }
-
     }
 
     this.score++;
