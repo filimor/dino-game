@@ -1,7 +1,8 @@
-const FIELD_BACKGROUNG = '#fafafa';
+const FIELD_BACKGROUND = '#fafafa';
 const FIELD_HEIGHT = 150;
 const FIELD_WIDTH = 600;
-const FPS = 1 / 20;
+const FPS = 1/60;
+
 const PLAYER_POS = {
   'NORMAL_WIDTH': 44,
   'NORMAL_HEIGHT': 46,
@@ -12,6 +13,20 @@ const PLAYER_POS = {
   'DUCK_X': 29,
   'DUCK_Y': 135,
 };
+
+const ENEMY_POS = {
+  'START_X': 650,
+  'CACTUS1_START_Y': 133,
+  'CACTUS1_WIDTH': 34,
+  'CACTUS1_HEIGHT': 35,
+  'CACTUS2_START_Y': 133,
+  'CACTUS2_WIDTH': 25,
+  'CACTUS2_HEIGHT': 49,
+  'BIRD_START_Y': 100,
+  'BIRD_WIDTH': 46,
+  'BIRD_HEIGHT': 39,
+};
+
 const KEYBINDS = {
   ' ': 'jump',
   'ArrowDown': 'duck'
@@ -288,7 +303,7 @@ class Renderer {
       sprite.update(fps);
     }
 
-    this.context.fillStyle = FIELD_BACKGROUNG;
+    this.context.fillStyle = FIELD_BACKGROUND;
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     for (const entity of game.entities) {
@@ -540,13 +555,22 @@ class Game {
     if(Math.floor(Math.random() * 1000) < this.SpawnRate) {
       switch (Math.floor(Math.random() * 3)) {
         case 1:
-          this.addEntity(new Enemy(new Vector2d(617, 133), this.enemySpeed, 0));
+          this.addEntity(new Enemy(
+            new Vector2d(ENEMY_POS.START_X, ENEMY_POS.CACTUS1_START_Y),
+            this.enemySpeed, 0)
+          );
           break;
         case 2:
-          this.addEntity(new Enemy(new Vector2d(617, 133), this.enemySpeed, 3));
+          this.addEntity(new Enemy(
+            new Vector2d(ENEMY_POS.START_X, ENEMY_POS.CACTUS2_START_Y),
+            this.enemySpeed, 3)
+          );
           break;
         case 3:
-        this.addEntity(new Enemy(new Vector2d(617, 133), this.enemySpeed, 7));
+          this.addEntity(new Enemy(
+            new Vector2d(ENEMY_POS.START_X, ENEMY_POS.BIRD_START_Y),
+            this.enemySpeed, 7)
+          );
           break;
         default:
           break;
